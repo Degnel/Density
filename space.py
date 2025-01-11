@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torch
 import torch.optim as optim
 import torch.nn as nn
@@ -5,21 +6,36 @@ import torch.nn as nn
 class ArchitecturalSpace:
     def __init__(   
             self, 
-            name=None,
-            model=None,
-            lr=0.001,
-            epoch=10,
-            batch_size=16,
+            input_size: tuple | torch.Size,
+            name: str = None,
+            architecture: nn.Module | list[nn.Module] = None,
+            lr: float | list[float] = 0.001,
+            epoch: int | list[int] = 10,
+            mini_batch_size: int | list[int] = 16,
             optimizer=optim.AdamW,
             loss=nn.MSELoss(),
+            grad_clamp: int | list[int] = 1,
         ):
         self.name = name
-        self.model = model
-        self.lr = lr
+        self.architecture = architecture
         self.epoch = epoch
-        self.batch_size = batch_size
-        self.optimizer = optimizer
+        self.mini_batch_size = mini_batch_size
+        self.optimizer = optimizer(architecture().parameters(), lr)
         self.loss = loss
+        self.input_size = input_size
+        self.grad_clamp = grad_clamp
 
-    def __str__(self):
-        return f"{self.name} - {self.model} - {self.lr} - {self.epoch} - {self.batch_size} - {self.optimizer} - {self.loss}"
+        # On obtient le nombre d'architectures
+        if type(architecture) is list:
+            list_size = len(architecture)
+        else:
+            list_size = 1
+            self.architecture = [architecture]
+
+        for attr_name, attr_value in vars(self).items():
+            # On vérifie que s'il y a des listes alors elles ont toutes la même taille
+            if type(attr_value) is list:
+                assert len(attr_value) == list_size
+            # On initialise les attributs qui peuvent être des listes en liste constantes
+            elif attr_name in ['lr', 'epoch', 'mini_batch_size', 'grad_clamp']:
+                setattr(self, attr_name, [deepcopy(attr_value) for _ in range(list_size)])
