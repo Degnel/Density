@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from space import ArchitecturalSpace
+from density.space import ArchitecturalSpace
 import matplotlib.pyplot as plt
 
 
@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 class ArchitectureComparator:
     def __init__(
             self, 
-            space_A: ArchitecturalSpace, 
-            space_B: ArchitecturalSpace,
+            A_space: ArchitecturalSpace, 
+            B_space: ArchitecturalSpace,
             base_space: ArchitecturalSpace=None,
             criterion = nn.MSELoss(),
             law = torch.distributions.Normal(0, 1),
@@ -18,8 +18,8 @@ class ArchitectureComparator:
             sub_iterations=1,
             batch_size=1000,
         ):
-        self.space_A = space_A
-        self.space_B = space_B
+        self.A_space = A_space
+        self.B_space = B_space
         self.base_space = base_space
         self.criterion = criterion
         self.law = law
@@ -27,17 +27,17 @@ class ArchitectureComparator:
         self.sub_iterations = sub_iterations
         self.batch_size = batch_size
 
-        assert space_A.input_size == space_B.input_size, "The input size of the two models must be the same"
+        assert A_space.input_size == B_space.input_size, "The input size of the two models must be the same"
 
-        self.input_size = space_A.input_size
+        self.input_size = A_space.input_size
 
-        assert len(space_A.architecture) == len(space_B.architecture), "The number of architectures must be the same in space A and B"
-        self.count = len(space_A.architecture)
+        assert len(A_space.architecture) == len(B_space.architecture), "The number of architectures must be the same in space A and B"
+        self.count = len(A_space.architecture)
 
         try:
             test_tensor = torch.zeros_like(1, *self.input_size)
-            A_output_size = space_A.architecture[0]()(test_tensor).shape
-            B_output_size = space_B.architecture[0]()(test_tensor).shape
+            A_output_size = A_space.architecture[0]()(test_tensor).shape
+            B_output_size = B_space.architecture[0]()(test_tensor).shape
 
             assert A_output_size == B_output_size, "The output size of the two models must be the same"
 
@@ -61,16 +61,16 @@ class ArchitectureComparator:
 
         for i in range(self.count):
             if self.base_space is None:
-                self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(self.space_A.architecture[i], self.space_B.architecture[i])
-                self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(self.space_B.architecture[i], self.space_A.architecture[i])
+                self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(self.A_space.architecture[i], self.B_space.architecture[i])
+                self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(self.B_space.architecture[i], self.A_space.architecture[i])
             else:
-                self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(self.space_A.architecture[i], self.base_space.architecture[i])
-                self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(self.space_B.architecture[i], self.base_space.architecture[i])
+                self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(self.A_space.architecture[i], self.base_space.architecture[i])
+                self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(self.B_space.architecture[i], self.base_space.architecture[i])
 
         if plot_mode is not None:
             self.plot(plot_mode)
 
-        return
+        return self.min_A_fit, self.max_A_fit, self.min_B_fit, self.max_B_fit
 
     def _fit_source_to_target(
         self, 
@@ -142,12 +142,12 @@ class ArchitectureComparator:
             values_A = self.mean_A_fit
             values_B = self.mean_B_fit
 
-        self.A_params = [self.count_parameters(arch) for arch in self.space_A.architecture]
-        self.B_params = [self.count_parameters(arch) for arch in self.space_B.architecture]
+        self.A_params = [self.count_parameters(arch) for arch in self.A_space.architecture]
+        self.B_params = [self.count_parameters(arch) for arch in self.B_space.architecture]
 
         plt.figure(figsize=(10, 5))
-        plt.plot(self.A_params, values_A, label=f'Architecture A ({mode})', marker='o')
-        plt.plot(self.B_params, values_B, label=f'Architecture B ({mode})', marker='o')
+        plt.plot(self.A_params, values_A, label=f'Architecture {self.A_space.name} ({mode})', marker='o')
+        plt.plot(self.B_params, values_B, label=f'Architecture {self.B_space.name} ({mode})', marker='o')
         plt.xlabel('Number of Parameters')
         plt.ylabel(f'{mode.capitalize()} Value')
         plt.title(f'Comparison of {mode.capitalize()} Values for Architectures A and B')
