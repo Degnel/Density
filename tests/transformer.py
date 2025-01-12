@@ -1,9 +1,6 @@
 import torch.nn as nn
 from tests.attention import MultiHeadAttention
 
-# Revoir le code, j'ai l'impression qu'il n'y a pas de matrice Wv, Wq et Wk
-
-
 class Transformer(nn.Module):
     def __init__(self, d_model, n_heads, d_ff, num_layers, dropout=0.1, split=False):
         super(Transformer, self).__init__()
