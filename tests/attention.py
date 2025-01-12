@@ -26,7 +26,7 @@ class MultiHeadAttention(nn.Module):
         """
         query, key, value : Tensor de taille (batch_size, seq_len, d_model)
         """
-        batch_size = query.size(0)
+        batch_size, seq_len, _ = query.size()
 
         # Calculer Q, K, V et les diviser en têtes
         qkv = self.qkv_proj(query).chunk(3, dim=-1)
@@ -35,12 +35,11 @@ class MultiHeadAttention(nn.Module):
             for x in qkv
         ]
 
-        # Produit scalaire pour l'attention
-        key = key.transpose(-2, -1)
         if self.split:
             query = self.activation(query)
             key = self.activation(key)
 
+        # Produit scalaire pour l'attention
         scores = torch.matmul(query, key.transpose(-2, -1)) / self.scale
         attention = F.softmax(scores, dim=-1)
 
@@ -51,6 +50,9 @@ class MultiHeadAttention(nn.Module):
         attn_output = (
             attn_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
         )
+
+        # Reshaping
+        attn_output = attn_output.view(batch_size, seq_len, self.d_model)
 
         # Projection finale
         return self.fc_out(attn_output)

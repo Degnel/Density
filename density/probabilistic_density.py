@@ -32,15 +32,15 @@ class ArchitectureComparator:
 
         self.input_size = A_space.input_size
 
-        assert len(A_space.architecture) == len(
-            B_space.architecture
+        assert len(A_space.parameters) == len(
+            B_space.parameters
         ), "The number of architectures must be the same in space A and B"
-        self.count = len(A_space.architecture)
+        self.count = len(A_space.parameters)
 
         try:
-            test_tensor = torch.zeros_like(1, *self.input_size)
-            A_output_size = A_space.architecture[0]()(test_tensor).shape
-            B_output_size = B_space.architecture[0]()(test_tensor).shape
+            test_tensor = torch.zeros((1, *self.input_size))
+            A_output_size = self._create_model(A_space, 0)(test_tensor).shape
+            B_output_size = self._create_model(B_space, 0)(test_tensor).shape
 
             assert (
                 A_output_size == B_output_size
@@ -52,14 +52,14 @@ class ArchitectureComparator:
                 assert (
                     self.input_size == base_space.input_size
                 ), "The input size of the two models must be the same"
-                base_output_size = base_space.architecture[0]()(test_tensor).shape
+                base_output_size = self._create_model(base_space, 0)(test_tensor).shape
                 assert (
                     self.output_size == base_output_size
                 ), "The output size of the two models must be the same"
-                assert len(base_space.architecture) == self.count
+                assert len(base_space.parameters) == self.count
 
-        except:
-            print("The input size is not correct")
+        except Exception as e:
+            print("The input size is not correct", e)
 
     def compare(self, plot_mode=None):
         self.min_A_fit = [None for _ in range(self.count)]
@@ -87,49 +87,55 @@ class ArchitectureComparator:
             self.plot(plot_mode)
 
         return self.min_A_fit, self.mean_A_fit, self.min_B_fit, self.mean_B_fit
+    
+    def _create_model(self, space: ArchitecturalSpace, index: int):
+        return space.architecture(**space.parameters[index])
 
     def _fit_source_to_target(
         self,
-        source_architecture: ArchitecturalSpace,
-        target_architecture: ArchitecturalSpace,
+        source_space: ArchitecturalSpace,
+        target_space: ArchitecturalSpace,
         model_index: int,
     ):
         minimum = torch.tensor([torch.inf] * self.iterations)
         mean = torch.zeros(self.iterations)
 
-        # Initialize grad_clamp and criterion
-        grad_clamp = source_architecture.grad_clamp
+        # Initialize epochs, grad_clamp and criterion
+        epochs = source_space.epoch[model_index]
+        grad_clamp = source_space.grad_clamp[model_index]
         criterion = self.criterion
 
         for i in range(self.iterations):
             # Generate data
-            mini_batch_count = self.batch_size // source_architecture.mini_batch_size
+            mini_batch_count = self.batch_size // source_space.mini_batch_size[model_index]
+            mini_batch_size = source_space.mini_batch_size[model_index]
             shape = (
                 mini_batch_count,
-                source_architecture.mini_batch_size,
+                mini_batch_size,
                 *self.input_size,
             )
             X = self.law.sample(shape)
 
             # Initilize target model
-            target_model = target_architecture.architecture[model_index]()
+            target_model = self._create_model(target_space, model_index)
             target_model.eval()
 
             # Foward pass into target model
-            target_output = target_model(X)
+            target_output = target_model(X.view(mini_batch_count*mini_batch_size, *self.input_size))
+            target_output = target_output.view(mini_batch_count, mini_batch_size, *self.output_size)    
 
             for _ in range(self.sub_iterations):
                 # Initialize source model
-                source_model = source_architecture.architecture[model_index]()
+                source_model = self._create_model(source_space, model_index)
                 source_model.train()
-                optimizer = source_architecture.optimizer(
-                    source_model.parameters(), source_architecture.lr[model_index]
+                optimizer = source_space.optimizer(
+                    source_model.parameters(), source_space.lr[model_index]
                 )
 
                 # Train source model to fit target model
                 loss = self.train_model(
                     source_model,
-                    source_architecture.epoch[model_index],
+                    epochs,
                     criterion,
                     optimizer,
                     grad_clamp,
