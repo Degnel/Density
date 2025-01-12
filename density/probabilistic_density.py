@@ -46,7 +46,7 @@ class ArchitectureComparator:
                 A_output_size == B_output_size
             ), "The output size of the two models must be the same"
 
-            self.output_size = A_output_size
+            self.output_size = A_output_size[1:]
 
             if base_space is not None:
                 assert (
@@ -54,7 +54,7 @@ class ArchitectureComparator:
                 ), "The input size of the two models must be the same"
                 base_output_size = self._create_model(base_space, 0)(test_tensor).shape
                 assert (
-                    self.output_size == base_output_size
+                    self.output_size == base_output_size[1:]
                 ), "The output size of the two models must be the same"
                 assert len(base_space.parameters) == self.count
 
@@ -115,14 +115,16 @@ class ArchitectureComparator:
                 *self.input_size,
             )
             X = self.law.sample(shape)
+            X.detach()
 
             # Initilize target model
             target_model = self._create_model(target_space, model_index)
             target_model.eval()
 
             # Foward pass into target model
-            target_output = target_model(X.view(mini_batch_count*mini_batch_size, *self.input_size))
-            target_output = target_output.view(mini_batch_count, mini_batch_size, *self.output_size)    
+            with torch.no_grad():
+                target_output = target_model(X.view(mini_batch_count*mini_batch_size, *self.input_size))
+                target_output = target_output.view(mini_batch_count, mini_batch_size, *self.output_size)
 
             for _ in range(self.sub_iterations):
                 # Initialize source model
@@ -152,10 +154,10 @@ class ArchitectureComparator:
 
     def train_model(self, model, epochs, criterion, optimizer, grad_clamp, X, y):
         for epoch in range(epochs):
-            for mini_batch in X:
+            for mini_batch, target in zip(X, y):
                 optimizer.zero_grad()
                 output = model(mini_batch)
-                loss = criterion(output, y)
+                loss = criterion(output, target)
                 loss.backward()
                 torch.nn.utils.clip_grad_value_(model.parameters(), grad_clamp)
                 optimizer.step()
