@@ -48,11 +48,8 @@ class MultiHeadAttention(nn.Module):
 
         # Réassembler les têtes
         attn_output = (
-            attn_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+            attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
         )
-
-        # Reshaping
-        attn_output = attn_output.view(batch_size, seq_len, self.d_model)
 
         # Projection finale
         return self.fc_out(attn_output)
