@@ -3,24 +3,26 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
+
 class ArchitecturalSpace:
-    def __init__(   
-            self, 
-            input_size: tuple | torch.Size,
-            name: str = None,
-            architecture: nn.Module | list[nn.Module] = None,
-            lr: float | list[float] = 0.001,
-            epoch: int | list[int] = 10,
-            mini_batch_size: int | list[int] = 16,
-            optimizer=optim.AdamW,
-            loss=nn.MSELoss(),
-            grad_clamp: int | list[int] = 1,
-        ):
+    def __init__(
+        self,
+        input_size: tuple | torch.Size,
+        name: str = None,
+        architecture: nn.Module | list[nn.Module] = None,
+        lr: float | list[float] = 0.001,
+        epoch: int | list[int] = 10,
+        mini_batch_size: int | list[int] = 16,
+        optimizer=optim.AdamW,
+        loss=nn.MSELoss(),
+        grad_clamp: int | list[int] = 1,
+    ):
         self.name = name
         self.architecture = architecture
+        self.lr = lr
         self.epoch = epoch
         self.mini_batch_size = mini_batch_size
-        self.optimizer = optimizer(architecture().parameters(), lr)
+        self.optimizer = optimizer
         self.loss = loss
         self.input_size = input_size
         self.grad_clamp = grad_clamp
@@ -37,5 +39,7 @@ class ArchitecturalSpace:
             if type(attr_value) is list:
                 assert len(attr_value) == list_size
             # On initialise les attributs qui peuvent être des listes en liste constantes
-            elif attr_name in ['lr', 'epoch', 'mini_batch_size', 'grad_clamp']:
-                setattr(self, attr_name, [deepcopy(attr_value) for _ in range(list_size)])
+            elif attr_name in ["lr", "epoch", "mini_batch_size", "grad_clamp"]:
+                setattr(
+                    self, attr_name, [deepcopy(attr_value) for _ in range(list_size)]
+                )
