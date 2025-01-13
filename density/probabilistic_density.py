@@ -3,8 +3,6 @@ from torch import nn
 from density.space import ArchitecturalSpace
 import matplotlib.pyplot as plt
 
-# Calculer la variance empirique afin de savoir quand s'arrêter (regarder pour quel paramètre c'est intéressant de le faire)
-
 class ArchitectureComparator:
     def __init__(
         self,
@@ -13,18 +11,12 @@ class ArchitectureComparator:
         base_space: ArchitecturalSpace = None,
         criterion=nn.MSELoss(),
         law=torch.distributions.Normal(0, 1),
-        iterations=100,
-        sub_iterations=1,
-        batch_size=1000,
     ):
         self.A_space = A_space
         self.B_space = B_space
         self.base_space = base_space
         self.criterion = criterion
         self.law = law
-        self.iterations = iterations
-        self.sub_iterations = sub_iterations
-        self.batch_size = batch_size
 
         assert (
             A_space.input_size == B_space.input_size
@@ -61,7 +53,22 @@ class ArchitectureComparator:
         except Exception as e:
             print("The input size is not correct", e)
 
-    def compare(self, plot_mode=None):
+    def compare(
+            self, 
+            max_iterations=100,
+            sub_iterations=1,
+            batch_size=1000,
+            variance_threashold=None,
+            plot_mode=None # le mode min sert simplement à trouver le minium (comme dans la formule), le mode mean sert à obtenir une moyenne sur la solution que l'on va trouver empiriquement. Comme notre algorithme de descente de gradient n'est pas paarfait, on ne met jamais le doigt sur le minimum réel
+        ):
+        self.max_iterations = max_iterations
+        self.sub_iterations = sub_iterations # sub_iteration sert à contrôler le nombre de tentatites pour trouver minimiser l'écart entre le réseau target et le réseau apprenant
+        self.batch_size = batch_size
+        if variance_threashold is None:
+            self.variance_threashold = 0
+        else:
+            self.variance_threashold = variance_threashold
+
         self.min_A_fit = [None for _ in range(self.count)]
         self.mean_A_fit = [None for _ in range(self.count)]
         self.min_B_fit = [None for _ in range(self.count)]
@@ -97,15 +104,15 @@ class ArchitectureComparator:
         target_space: ArchitecturalSpace,
         model_index: int,
     ):
-        minimum = torch.tensor([torch.inf] * self.iterations)
-        mean = torch.zeros(self.iterations)
+        minimum = torch.tensor([torch.inf] * self.max_iterations)
+        mean = torch.zeros(self.max_iterations)
 
         # Initialize epochs, grad_clamp and criterion
         epochs = source_space.epoch[model_index]
         grad_clamp = source_space.grad_clamp[model_index]
         criterion = self.criterion
 
-        for i in range(self.iterations):
+        for i in range(self.max_iterations):
             # Generate data
             mini_batch_count = self.batch_size // source_space.mini_batch_size[model_index]
             mini_batch_size = source_space.mini_batch_size[model_index]
@@ -150,6 +157,13 @@ class ArchitectureComparator:
 
             mean[i] /= self.sub_iterations
 
+            # Calculer la variance empirique afin de savoir quand s'arrêter
+            min_var = torch.var(minimum, unbiased=True)
+            mean_var = torch.var(mean, unbiased=True)
+            max_var = max(min_var, mean_var)
+            if max_var < self.variance_threashold:
+                break
+
         return minimum.mean().item(), mean.mean().item()
 
     def train_model(self, model, epochs, criterion, optimizer, grad_clamp, X, y):
@@ -170,7 +184,7 @@ class ArchitectureComparator:
         model = architecture()
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    def plot(self, mode):
+    def plot(self, mode, information_based):
         if mode not in ["min", "mean"]:
             raise ValueError("Mode must be 'min' or 'mean'")
 
@@ -180,6 +194,11 @@ class ArchitectureComparator:
         elif mode == "mean":
             values_A = self.mean_A_fit
             values_B = self.mean_B_fit
+
+        if information_based:
+            mesure = self.count_parameters
+        else:
+            mesure = lambda arch: 0
 
         self.A_params = [
             self.count_parameters(arch) for arch in self.A_space.architecture
