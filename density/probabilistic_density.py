@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch import nn, optim
 from density.space import ArchitecturalSpace
 import matplotlib.pyplot as plt
 
@@ -11,7 +11,17 @@ class ArchitectureComparator:
         base_space: ArchitecturalSpace = None,
         criterion=nn.MSELoss(),
         law=torch.distributions.Normal(0, 1),
-    ):
+    ) -> None:
+        """
+        Initialize the ArchitectureComparator.
+        
+        Parameters:
+        - A_space (ArchitecturalSpace): The first architectural space.
+        - B_space (ArchitecturalSpace): The second architectural space.
+        - base_space (ArchitecturalSpace, optional): The base architectural space used for comparison.
+        - criterion (nn.Module): Loss function used for training (default: nn.MSELoss).
+        - law (torch.distributions.Distribution): Data distribution for sampling (default: Normal(0, 1)).
+        """
         self.A_space = A_space
         self.B_space = B_space
         self.base_space = base_space
@@ -28,6 +38,11 @@ class ArchitectureComparator:
             B_space.parameters
         ), "The number of architectures must be the same in space A and B"
         self.count = len(A_space.parameters)
+
+        assert A_space.automatic_mesurement_mode == B_space.automatic_mesurement_mode, "The automatic mesurement mode must be the same in space A and B"
+
+        if A_space.mesurement != B_space.mesurement:
+            print("Warning: The mesurements of space A and B are different, you may not compare both model on an equal footing")
 
         try:
             test_tensor = torch.zeros((1, *self.input_size))
@@ -54,16 +69,27 @@ class ArchitectureComparator:
             print("The input size is not correct", e)
 
     def compare(
-            self, 
-            max_iterations=100,
-            sub_iterations=1,
-            batch_size=1000,
-            variance_threashold=None,
-            plot_mode=None # le mode min sert simplement à trouver le minium (comme dans la formule), le mode mean sert à obtenir une moyenne sur la solution que l'on va trouver empiriquement. Comme notre algorithme de descente de gradient n'est pas paarfait, on ne met jamais le doigt sur le minimum réel
-        ):
+        self,
+        max_iterations: int = 100,
+        sub_iterations: int = 1,
+        variance_threashold: float | None = None,
+        plot_mode: str | None = None,
+    ) -> tuple[list[float]]:
+        """
+        Compare architectures by fitting one to the other and evaluating performance.
+
+        Parameters:
+        - max_iterations (int): Maximum number of gradient descent iterations.
+        - sub_iterations (int): Number of attempts of the source architecture to minimize error at each iteration.
+        - variance_threashold (float, optional): Threshold to stop iterations based on variance.
+        - plot_mode (str, optional): Plot comparison results; "min" or "mean".
+
+        Returns:
+        - tuple[list[float]]: Minimum and mean losses for architectures A and B.
+        """
+
         self.max_iterations = max_iterations
-        self.sub_iterations = sub_iterations # sub_iteration sert à contrôler le nombre de tentatites pour trouver minimiser l'écart entre le réseau target et le réseau apprenant
-        self.batch_size = batch_size
+        self.sub_iterations = sub_iterations
         if variance_threashold is None:
             self.variance_threashold = 0
         else:
@@ -90,12 +116,41 @@ class ArchitectureComparator:
                     self.B_space, self.base_space, i
                 )
 
+            if self.min_B_fit[i] > self.min_A_fit[i]:
+                self.winnner = 'A'
+                print(f"Model {self.A_space.name} is better than {self.B_space.name}")
+            else:
+                self.winnner = 'B'
+                print(f"Model {self.B_space.name} is better than {self.A_space.name}")
+
+            if self.mean_B_fit[i] > self.mean_A_fit[i]:
+                if self.winnner == 'A':
+                    print(f"Model {self.A_space.name} is better than {self.B_space.name} by any mean")
+                else:
+                    print(f"However, model {self.A_space.name} shows better convergence in mean than {self.B_space.name}")
+            else:
+                if self.winnner == 'B':
+                    print(f"Model {self.B_space.name} is better than {self.A_space.name} by any mean")
+                else:
+                    print(f"However, model {self.B_space.name} shows better convergence in mean than {self.A_space.name}")
+
         if plot_mode is not None:
             self.plot(plot_mode)
 
         return self.min_A_fit, self.mean_A_fit, self.min_B_fit, self.mean_B_fit
     
-    def _create_model(self, space: ArchitecturalSpace, index: int):
+    def _create_model(self, space: ArchitecturalSpace, index: int) -> nn.Module:
+        """
+        Create a model from a given architecture and a set of parameters.
+
+        Parameters:
+        - space (ArchitecturalSpace): The architectural space.
+        - index (int): Index of the model within the space.
+
+        Returns:
+        - nn.Module: The created model.
+        """
+
         return space.architecture(**space.parameters[index])
 
     def _fit_source_to_target(
@@ -103,7 +158,19 @@ class ArchitectureComparator:
         source_space: ArchitecturalSpace,
         target_space: ArchitecturalSpace,
         model_index: int,
-    ):
+    ) -> tuple[float]:
+        """
+        Fit a source model to match the behavior of a target model.
+
+        Parameters:
+        - source_space (ArchitecturalSpace): The source architectural space.
+        - target_space (ArchitecturalSpace): The target architectural space.
+        - model_index (int): Index of the model being compared.
+
+        Returns:
+        - tuple[float]: Mean and minimum losses for the source model fitting the target.
+        """
+
         minimum = torch.tensor([torch.inf] * self.max_iterations)
         mean = torch.zeros(self.max_iterations)
 
@@ -112,15 +179,19 @@ class ArchitectureComparator:
         grad_clamp = source_space.grad_clamp[model_index]
         criterion = self.criterion
 
+        # We initialize mini_batch_count with both the target_space batch size and the source_space mini batch size
+        # This allows us to take the information of the source space to improve convergence (as it is an important hyperparamter during the learning process of the source)
+        # In the meantime, using the target space batch size allows us to know how much samples are need, if the target network has only one parameter, then the maximum degree of freedom its output is 1 (this is much more relevant thant taking the one of the source, but when compareing without a base space, we recommand to have similar mesurements for both the source and the target)
+        mini_batch_count = target_space.batch_size[model_index] // source_space.mini_batch_size[model_index]
+        mini_batch_size = source_space.mini_batch_size[model_index]
+        shape = (
+            mini_batch_count,
+            mini_batch_size,
+            *self.input_size,
+        )
+
         for i in range(self.max_iterations):
             # Generate data
-            mini_batch_count = self.batch_size // source_space.mini_batch_size[model_index]
-            mini_batch_size = source_space.mini_batch_size[model_index]
-            shape = (
-                mini_batch_count,
-                mini_batch_size,
-                *self.input_size,
-            )
             X = self.law.sample(shape)
             X.detach()
 
@@ -152,7 +223,7 @@ class ArchitectureComparator:
                     target_output,
                 )
 
-                minimum[i] = min(minimum, loss)
+                minimum[i] = min(minimum[i], loss.item())
                 mean[i] += loss
 
             mean[i] /= self.sub_iterations
@@ -166,7 +237,32 @@ class ArchitectureComparator:
 
         return minimum.mean().item(), mean.mean().item()
 
-    def train_model(self, model, epochs, criterion, optimizer, grad_clamp, X, y):
+    def train_model(
+        self,
+        model: nn.Module,
+        epochs: int,
+        criterion: nn.Module,
+        optimizer: optim.Optimizer,
+        grad_clamp: float,
+        X: list[torch.Tensor],
+        y: list[torch.Tensor],
+    ) -> torch.Tensor:
+        """
+        Train a model to minimize the loss between predicted and target outputs.
+
+        Parameters:
+        - model (nn.Module): The model to train.
+        - epochs (int): Number of training epochs.
+        - criterion (nn.Module): Loss function.
+        - optimizer (optim.Optimizer): Optimizer for gradient updates.
+        - grad_clamp (float): Maximum gradient value for clipping.
+        - X (list[torch.Tensor]): Input tensors.
+        - y (list[torch.Tensor]): Target tensors.
+
+        Returns:
+        - torch.Tensor: Final loss value.
+        """
+
         for epoch in range(epochs):
             for mini_batch, target in zip(X, y):
                 optimizer.zero_grad()
@@ -179,12 +275,18 @@ class ArchitectureComparator:
                 print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
 
         return loss
+    
+    def plot(self, mode: str) -> None:
+        """
+        Plot comparison results between architectures.
 
-    def count_parameters(self, architecture):
-        model = architecture()
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+        Parameters:
+        - mode (str): Plot type, "min" for minimum loss or "mean" for average loss.
 
-    def plot(self, mode, information_based):
+        Raises:
+        - ValueError: If the mode is not "min" or "mean".
+        """
+
         if mode not in ["min", "mean"]:
             raise ValueError("Mode must be 'min' or 'mean'")
 
@@ -195,27 +297,15 @@ class ArchitectureComparator:
             values_A = self.mean_A_fit
             values_B = self.mean_B_fit
 
-        if information_based:
-            mesure = self.count_parameters
-        else:
-            mesure = lambda arch: 0
-
-        self.A_params = [
-            self.count_parameters(arch) for arch in self.A_space.architecture
-        ]
-        self.B_params = [
-            self.count_parameters(arch) for arch in self.B_space.architecture
-        ]
-
         plt.figure(figsize=(10, 5))
         plt.plot(
-            self.A_params,
+            self.A_space.mesurement,
             values_A,
             label=f"Architecture {self.A_space.name} ({mode})",
             marker="o",
         )
         plt.plot(
-            self.B_params,
+            self.B_space.mesurement,
             values_B,
             label=f"Architecture {self.B_space.name} ({mode})",
             marker="o",
@@ -228,5 +318,10 @@ class ArchitectureComparator:
         plt.show()
 
     def get_densities(self):
-        # Return the density of the comparison
+        """
+        Compute and return the density of the comparison.
+
+        Returns:
+        - To be implemented if mathematically cool.
+        """
         pass
