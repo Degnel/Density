@@ -5,10 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: A/B Test",
+            "name": "Python Debugger: Split-Transformer Test",
             "type": "debugpy",
             "request": "launch",
-            "program": "./tests/ab_test.py",
+            "program": "./tests/split_transformer_test.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: N-Diagonal Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./tests/n_diagonal_test.py",
             "console": "integratedTerminal"
         }
     ]

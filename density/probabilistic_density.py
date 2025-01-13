@@ -3,6 +3,7 @@ from torch import nn, optim
 from density.space import ArchitecturalSpace
 import matplotlib.pyplot as plt
 
+
 class ArchitectureComparator:
     def __init__(
         self,
@@ -14,7 +15,7 @@ class ArchitectureComparator:
     ) -> None:
         """
         Initialize the ArchitectureComparator.
-        
+
         Parameters:
         - A_space (ArchitecturalSpace): The first architectural space.
         - B_space (ArchitecturalSpace): The second architectural space.
@@ -39,10 +40,16 @@ class ArchitectureComparator:
         ), "The number of architectures must be the same in space A and B"
         self.count = len(A_space.parameters)
 
-        assert A_space.automatic_mesurement_mode == B_space.automatic_mesurement_mode, "The automatic mesurement mode must be the same in space A and B"
+        assert (
+            A_space.automatic_mesurement_mode == B_space.automatic_mesurement_mode
+            or A_space.automatic_mesurement_mode is None
+            or B_space.automatic_mesurement_mode is None
+        ), "The automatic mesurement mode must be the same in space A and B"
 
         if A_space.mesurement != B_space.mesurement:
-            print("Warning: The mesurements of space A and B are different, you may not compare both model on an equal footing")
+            print(
+                "Warning: The mesurements of space A and B are different, you may not compare both model on an equal footing"
+            )
 
         try:
             test_tensor = torch.zeros((1, *self.input_size))
@@ -70,7 +77,7 @@ class ArchitectureComparator:
 
     def compare(
         self,
-        max_iterations: int = 100,
+        max_iterations: int = 10,
         sub_iterations: int = 1,
         variance_threashold: float | None = None,
         plot_mode: str | None = None,
@@ -101,44 +108,57 @@ class ArchitectureComparator:
         self.mean_B_fit = [None for _ in range(self.count)]
 
         for i in range(self.count):
+            print(f"Fitting model {i+1} out of {self.count}")
             if self.base_space is None:
+                print(f"{self.A_space.name} fits {self.B_space.name}")
                 self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(
                     self.A_space, self.B_space, i
                 )
+                print(f"{self.B_space.name} fits {self.A_space.name}")
                 self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(
                     self.B_space, self.A_space, i
                 )
             else:
+                print(f"{self.A_space.name} fits {self.base_space.name}")
                 self.min_A_fit[i], self.mean_A_fit[i] = self._fit_source_to_target(
                     self.A_space, self.base_space, i
                 )
+                print(f"{self.base_space.name} fits {self.B_space.name}")
                 self.min_B_fit[i], self.mean_B_fit[i] = self._fit_source_to_target(
                     self.B_space, self.base_space, i
                 )
 
             if self.min_B_fit[i] > self.min_A_fit[i]:
-                self.winnner = 'A'
+                self.winnner = "A"
                 print(f"Model {self.A_space.name} is better than {self.B_space.name}")
             else:
-                self.winnner = 'B'
+                self.winnner = "B"
                 print(f"Model {self.B_space.name} is better than {self.A_space.name}")
 
             if self.mean_B_fit[i] > self.mean_A_fit[i]:
-                if self.winnner == 'A':
-                    print(f"Model {self.A_space.name} is better than {self.B_space.name} by any mean")
+                if self.winnner == "A":
+                    print(
+                        f"Model {self.A_space.name} is better than {self.B_space.name} by any mean"
+                    )
                 else:
-                    print(f"However, model {self.A_space.name} shows better convergence in mean than {self.B_space.name}")
+                    print(
+                        f"However, model {self.A_space.name} shows better convergence in mean than {self.B_space.name}"
+                    )
             else:
-                if self.winnner == 'B':
-                    print(f"Model {self.B_space.name} is better than {self.A_space.name} by any mean")
+                if self.winnner == "B":
+                    print(
+                        f"Model {self.B_space.name} is better than {self.A_space.name} by any mean"
+                    )
                 else:
-                    print(f"However, model {self.B_space.name} shows better convergence in mean than {self.A_space.name}")
+                    print(
+                        f"However, model {self.B_space.name} shows better convergence in mean than {self.A_space.name}"
+                    )
 
         if plot_mode is not None:
             self.plot(plot_mode)
 
         return self.min_A_fit, self.mean_A_fit, self.min_B_fit, self.mean_B_fit
-    
+
     def _create_model(self, space: ArchitecturalSpace, index: int) -> nn.Module:
         """
         Create a model from a given architecture and a set of parameters.
@@ -182,7 +202,10 @@ class ArchitectureComparator:
         # We initialize mini_batch_count with both the target_space batch size and the source_space mini batch size
         # This allows us to take the information of the source space to improve convergence (as it is an important hyperparamter during the learning process of the source)
         # In the meantime, using the target space batch size allows us to know how much samples are need, if the target network has only one parameter, then the maximum degree of freedom its output is 1 (this is much more relevant thant taking the one of the source, but when compareing without a base space, we recommand to have similar mesurements for both the source and the target)
-        mini_batch_count = target_space.batch_size[model_index] // source_space.mini_batch_size[model_index]
+        mini_batch_count = (
+            target_space.batch_size[model_index]
+            // source_space.mini_batch_size[model_index]
+        )
         mini_batch_size = source_space.mini_batch_size[model_index]
         shape = (
             mini_batch_count,
@@ -191,6 +214,7 @@ class ArchitectureComparator:
         )
 
         for i in range(self.max_iterations):
+            print(f"Iteration {i+1}/{self.max_iterations}")
             # Generate data
             X = self.law.sample(shape)
             X.detach()
@@ -201,19 +225,23 @@ class ArchitectureComparator:
 
             # Foward pass into target model
             with torch.no_grad():
-                target_output = target_model(X.view(mini_batch_count*mini_batch_size, *self.input_size))
-                target_output = target_output.view(mini_batch_count, mini_batch_size, *self.output_size)
+                target_output = target_model(
+                    X.view(mini_batch_count * mini_batch_size, *self.input_size)
+                )
+                target_output = target_output.view(
+                    mini_batch_count, mini_batch_size, *self.output_size
+                )
 
-            for _ in range(self.sub_iterations):
+            for j in range(self.sub_iterations):
+                print(f"Sub-iteration {j+1}/{self.sub_iterations}")
                 # Initialize source model
                 source_model = self._create_model(source_space, model_index)
-                source_model.train()
                 optimizer = source_space.optimizer(
                     source_model.parameters(), source_space.lr[model_index]
                 )
 
                 # Train source model to fit target model
-                loss = self.train_model(
+                self.train_model(
                     source_model,
                     epochs,
                     criterion,
@@ -223,7 +251,16 @@ class ArchitectureComparator:
                     target_output,
                 )
 
-                minimum[i] = min(minimum[i], loss.item())
+                # Compute loss on the whole batch
+                print("Computing score on the eval set...")
+                loss = self.test_model(
+                    source_model,
+                    criterion,
+                    X,
+                    target_output,
+                )
+
+                minimum[i] = min(minimum[i], loss)
                 mean[i] += loss
 
             mean[i] /= self.sub_iterations
@@ -237,6 +274,32 @@ class ArchitectureComparator:
 
         return minimum.mean().item(), mean.mean().item()
 
+    def test_model(
+        self,
+        model: nn.Module,
+        criterion: nn.Module,
+        X: list[torch.Tensor],
+        y: list[torch.Tensor],
+    ) -> float:
+        """
+        Test a model on a given dataset.
+
+        Parameters:
+        - model (nn.Module): The model to train.
+        - criterion (nn.Module): Loss function.
+        - X (list[torch.Tensor]): Input tensors.
+        - y (list[torch.Tensor]): Target tensors.
+        """
+
+        model.eval()
+        loss = 0
+        for mini_batch, target in zip(X, y):
+            output = model(mini_batch)
+            loss += criterion(output, target)
+        loss /= X.shape[0]
+        print(f"Score on the whole set, loss: {loss}")
+        return loss.item()
+
     def train_model(
         self,
         model: nn.Module,
@@ -246,7 +309,7 @@ class ArchitectureComparator:
         grad_clamp: float,
         X: list[torch.Tensor],
         y: list[torch.Tensor],
-    ) -> torch.Tensor:
+    ) -> None:
         """
         Train a model to minimize the loss between predicted and target outputs.
 
@@ -258,11 +321,8 @@ class ArchitectureComparator:
         - grad_clamp (float): Maximum gradient value for clipping.
         - X (list[torch.Tensor]): Input tensors.
         - y (list[torch.Tensor]): Target tensors.
-
-        Returns:
-        - torch.Tensor: Final loss value.
         """
-
+        model.train()
         for epoch in range(epochs):
             for mini_batch, target in zip(X, y):
                 optimizer.zero_grad()
@@ -272,10 +332,8 @@ class ArchitectureComparator:
                 torch.nn.utils.clip_grad_value_(model.parameters(), grad_clamp)
                 optimizer.step()
 
-                print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
+            print(f"Epoch {epoch + 1}/{epochs}, Loss: {loss.item()}")
 
-        return loss
-    
     def plot(self, mode: str) -> None:
         """
         Plot comparison results between architectures.

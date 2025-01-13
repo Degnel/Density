@@ -1,6 +1,7 @@
 import torch.nn as nn
 from tests.attention import MultiHeadAttention
 
+
 class Transformer(nn.Module):
     def __init__(self, d_model, n_heads, d_ff, num_layers, dropout=0.1, split=False):
         super(Transformer, self).__init__()

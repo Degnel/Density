@@ -19,8 +19,8 @@ class MultiHeadAttention(nn.Module):
         self.split = split
 
         if split:
-            self.activation = nn.ReLU()
-            # self.activation = nn.Tanh()
+            # self.activation = nn.ReLU()
+            self.activation = nn.Tanh()
 
     def forward(self, query, key, value):
         """
@@ -48,7 +48,9 @@ class MultiHeadAttention(nn.Module):
 
         # Réassembler les têtes
         attn_output = (
-            attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
+            attn_output.transpose(1, 2)
+            .contiguous()
+            .view(batch_size, seq_len, self.d_model)
         )
 
         # Projection finale
