@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from math import sqrt
 
 
 class NDiagonalLayer(nn.Module):
@@ -10,17 +11,20 @@ class NDiagonalLayer(nn.Module):
         self.dim = dim
         self.rank = rank
 
+        # std = sqrt(2/rank)
+        std = 0.0001
+
         # Matrice de poids limitée à n diagonales
-        self.diagonal_weights = nn.Parameter(torch.randn(dim) * 0.01)
+        self.diagonal_weights = nn.Parameter(torch.randn(dim) * std)
         self.lower_weights = [
-            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank-1)
+            nn.Parameter(torch.randn(dim - (i + 1)) * std) for i in range(rank-1)
         ]
         self.upper_weights = [
-            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank-1)
+            nn.Parameter(torch.randn(dim - (i + 1)) * std) for i in range(rank-1)
         ]
 
         # Optionnel : biais
-        self.bias = nn.Parameter(torch.zeros(dim)) if bias else None
+        self.bias = nn.Parameter(torch.randn(dim)) if bias else None
 
     def forward(self, x):
         weigths = torch.zeros((self.dim, self.dim))

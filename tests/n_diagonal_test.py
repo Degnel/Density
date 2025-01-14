@@ -78,6 +78,7 @@ fully_connected_space = ArchitecturalSpace(
 
 # Create comparator
 comparator = ArchitectureComparator(n_diagonal_space, lora_space, fully_connected_space)
+# comparator = ArchitectureComparator(lora_space, n_diagonal_space, fully_connected_space)
 res = comparator.compare(100, 5)
 print(res)
 comparator.plot("min")

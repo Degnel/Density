@@ -1,6 +1,7 @@
 import torch.nn as nn
 from n_diagonal import NDiagonalLayer
 from lora import LoRALayer
+from linear import LinearLayer
 
 
 class DeepNetwork(nn.Module):
@@ -18,7 +19,7 @@ class DeepNetwork(nn.Module):
             elif layer_type == "LoRA":
                 self.layers.append(LoRALayer(dim, rank, bias))
             elif layer_type == "fully_connected":
-                self.layers.append(nn.Linear(dim, dim, bias))
+                self.layers.append(LinearLayer(dim, bias))
             else:
                 raise ValueError(f"Type de couche non supporté : {layer_type}")
 
