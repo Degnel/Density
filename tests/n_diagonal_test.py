@@ -16,7 +16,7 @@ As the count of parameter does not scale the same way, we compare both architect
 n_diagonal_params = [
     {
         "layer_type": "n_diagonal",
-        "dim": 5,
+        "dim": 5, 
         "depth": 4,
         "rank": i+1,
         "bias": True,
@@ -37,7 +37,7 @@ lora_params = [
 
 fully_connected_params = [
     {
-        "layer_type": "n_diagonal",
+        "layer_type": "fully_connected",
         "dim": 5,
         "depth": 4,
         "bias": True,
@@ -56,12 +56,14 @@ n_diagonal_space = ArchitecturalSpace(
     "N-Diagonal",
     DeepNetwork,
     n_diagonal_params,
+    epoch=10,
+    lr=0.01,
     automatic_mesurement_mode=None,
     mesurement=[compute_params(5, 4, i, True) for i in range(5)],
 )
 
 lora_space = ArchitecturalSpace(
-    (5,), "LoRA", DeepNetwork, lora_params, automatic_mesurement_mode="parameters"
+    (5,), "LoRA", DeepNetwork, lora_params, epoch=10, lr=0.01, automatic_mesurement_mode="parameters"
 )
 
 fully_connected_space = ArchitecturalSpace(
@@ -69,11 +71,13 @@ fully_connected_space = ArchitecturalSpace(
     "Fully Connected",
     DeepNetwork,
     fully_connected_params,
+    epoch=10,
+    lr=0.01,
     automatic_mesurement_mode="parameters",
 )
 
 # Create comparator
 comparator = ArchitectureComparator(n_diagonal_space, lora_space, fully_connected_space)
-res = comparator.compare(10)
+res = comparator.compare(100, 5)
 print(res)
 comparator.plot("min")

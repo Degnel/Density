@@ -3,7 +3,6 @@ from torch import nn, optim
 from density.space import ArchitecturalSpace
 import matplotlib.pyplot as plt
 
-
 class ArchitectureComparator:
     def __init__(
         self,
@@ -41,9 +40,7 @@ class ArchitectureComparator:
         self.count = len(A_space.parameters)
 
         assert (
-            A_space.automatic_mesurement_mode == B_space.automatic_mesurement_mode
-            or A_space.automatic_mesurement_mode is None
-            or B_space.automatic_mesurement_mode is None
+            A_space.automatic_mesurement_mode == B_space.automatic_mesurement_mode or A_space.automatic_mesurement_mode is None or B_space.automatic_mesurement_mode is None
         ), "The automatic mesurement mode must be the same in space A and B"
 
         if A_space.mesurement != B_space.mesurement:

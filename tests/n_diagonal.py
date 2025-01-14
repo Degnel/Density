@@ -13,10 +13,10 @@ class NDiagonalLayer(nn.Module):
         # Matrice de poids limitée à n diagonales
         self.diagonal_weights = nn.Parameter(torch.randn(dim) * 0.01)
         self.lower_weights = [
-            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank)
+            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank-1)
         ]
         self.upper_weights = [
-            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank)
+            nn.Parameter(torch.randn(dim - (i + 1)) * 0.0001) for i in range(rank-1)
         ]
 
         # Optionnel : biais
