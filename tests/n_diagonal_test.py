@@ -16,9 +16,9 @@ As the count of parameter does not scale the same way, we compare both architect
 n_diagonal_params = [
     {
         "layer_type": "n_diagonal",
-        "dim": 5, 
+        "dim": 5,
         "depth": 4,
-        "rank": i+1,
+        "rank": i + 1,
         "bias": True,
     }
     for i in range(5)
@@ -29,7 +29,7 @@ lora_params = [
         "layer_type": "LoRA",
         "dim": 5,
         "depth": 4,
-        "rank": i+1,
+        "rank": i + 1,
         "bias": True,
     }
     for i in range(5)
@@ -63,7 +63,13 @@ n_diagonal_space = ArchitecturalSpace(
 )
 
 lora_space = ArchitecturalSpace(
-    (5,), "LoRA", DeepNetwork, lora_params, epoch=10, lr=0.01, automatic_mesurement_mode="parameters"
+    (5,),
+    "LoRA",
+    DeepNetwork,
+    lora_params,
+    epoch=10,
+    lr=0.01,
+    automatic_mesurement_mode="parameters",
 )
 
 fully_connected_space = ArchitecturalSpace(

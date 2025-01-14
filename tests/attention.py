@@ -13,7 +13,7 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = d_model // n_heads
 
         # Projections linéaires pour Q, K, V
-        self.qkv_proj = nn.Linear(d_model, 3 * d_model)
+        self.qkv_proj = nn.Linear(d_model, 3 * d_model, False)
         self.fc_out = nn.Linear(d_model, d_model)
         self.scale = math.sqrt(self.head_dim)
         self.split = split

@@ -18,7 +18,7 @@ transformer_params = [
         "d_model": 6,
         "n_heads": 3,
         "d_ff": 6,
-        "num_layers": i+1,
+        "num_layers": i + 1,
     }
     for i in range(4)
 ]
@@ -28,7 +28,7 @@ split_transformer_params = [
         "d_model": 6,
         "n_heads": 3,
         "d_ff": 6,
-        "num_layers": i+1,
+        "num_layers": i + 1,
         "split": True,
     }
     for i in range(4)

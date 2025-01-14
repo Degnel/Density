@@ -97,7 +97,9 @@ class ArchitecturalSpace:
 
         for attr_name, attr_value in vars(self).items():
             if type(attr_value) is list:
-                assert len(attr_value) == list_size, "You should have as much elements in each list in your parameters"
+                assert (
+                    len(attr_value) == list_size
+                ), "You should have as much elements in each list in your parameters"
             elif attr_name in [
                 "lr",
                 "epoch",

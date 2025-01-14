@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 from math import sqrt
 
+
 class LinearLayer(nn.Module):
     def __init__(self, dim, bias=True):
         super(LinearLayer, self).__init__()
         self.dim = dim
 
-        std = sqrt(2/dim)
-
+        std = sqrt(2 / dim)
         # std = 0.0001
 
         # Matrix
