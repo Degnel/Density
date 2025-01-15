@@ -80,13 +80,13 @@ class ArchitecturalSpace:
         else:
             self.mesurement_method = None
 
-        if automatic_mesurement_mode is None:
-            self.mesurement = mesurement
-        else:
+        if mesurement is None:
             self.mesurement = [
                 self.mesurement_method(architecture(**params))
                 for params in self.parameters
             ]
+        else:
+            self.mesurement = mesurement
 
         if automatic_batch_size_scale is None:
             self.batch_size = batch_size

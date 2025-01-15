@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from density.probabilistic_density import ArchitectureComparator
 from density.space import ArchitecturalSpace
-from tests.transformer import Transformer
+from tests.split_transformer.transformer import Transformer
 
 """
 In this exemple we are comparing 2 transformers with the same general architecture

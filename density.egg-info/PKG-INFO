@@ -22,4 +22,5 @@ Tests :
 - Le fichier n_diagonal_test.py compare l'usage d'une matrice n_diagonale, comparée à une matrice écrite sous la forme d'une LoRA. Le nombre de paramètre n'étant pas régoureusement identique dans les 2 architectures, on se propose de comparer ces dernière à une architecture tier qui englobe les 2 architectures. On compare donc à un réseau constitué de matrices de poids pleines.
 
 TODO:
-In the next version it would be great to let the user define its training routine directly in the ArchitecturalSpace class
+- In the next version it would be great to let the user define its training routine directly in the ArchitecturalSpace class
+- Lors de l'entrainement avec une architecture tier, on recalcule 2 fois des passes avant pour le modèle tier. On pourrait opitmiser le temps de calcul en s'assurant que l'on génère une target, puis les 2 modèles concurrents doivent l'approximer (au prix d'un code plus long, à moins de repenser la structure logique)

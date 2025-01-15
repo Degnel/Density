@@ -15,7 +15,7 @@
             "name": "Python Debugger: N-Diagonal Test",
             "type": "debugpy",
             "request": "launch",
-            "program": "./tests/n_diagonal_test.py",
+            "program": "./tests/n_diagonal/n_diagonal_test.py",
             "console": "integratedTerminal"
         }
     ]

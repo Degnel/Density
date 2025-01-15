@@ -1,11 +1,11 @@
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from density.probabilistic_density import ArchitectureComparator
 from density.space import ArchitecturalSpace
-from tests.deep_nn import DeepNetwork
+from tests.n_diagonal.deep_nn import DeepNetwork
 
 """
 In this exemple we are comparing the reduction of parameter count when using the usuall LoRA and a n-diagonal matrix instead

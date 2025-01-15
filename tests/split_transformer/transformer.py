@@ -1,5 +1,5 @@
 import torch.nn as nn
-from tests.attention import MultiHeadAttention
+from tests.split_transformer.attention import MultiHeadAttention
 
 
 class Transformer(nn.Module):
