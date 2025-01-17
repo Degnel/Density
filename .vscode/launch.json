@@ -17,6 +17,13 @@
             "request": "launch",
             "program": "./tests/n_diagonal/n_diagonal_test.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Cubic-Transformer Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./tests/cubic_transformer/cubic_transformer_test.py",
+            "console": "integratedTerminal"
         }
     ]
 }

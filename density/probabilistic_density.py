@@ -219,7 +219,7 @@ class ArchitectureComparator:
             X = self.law.sample(shape)
             X.detach()
 
-            # Initilize target model
+            # Initialize target model
             target_model = self._create_model(target_space, model_index)
             target_model.eval()
 
@@ -238,6 +238,12 @@ class ArchitectureComparator:
                 source_model = self._create_model(source_space, model_index)
                 optimizer = source_space.optimizer(
                     source_model.parameters(), source_space.lr[model_index]
+                )
+                loss = self.test_model(
+                    source_model,
+                    criterion,
+                    X,
+                    target_output,
                 )
 
                 # Train source model to fit target model
